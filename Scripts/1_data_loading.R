@@ -2,7 +2,7 @@
 # Load libraries ----
 
 library(pacman)
-p_load(raster, rgdal, dplyr, readr, mapview, sf, sp, stringr, spThin, biomod2, rasterVis, gdalUtils, stringr)
+p_load(raster, mapview, rgdal, dplyr, readr, mapview, sf, sp, stringr, spThin, biomod2, rasterVis, gdalUtils, stringr, ggplot2)
 
 # set raster options
 rasterOptions(tmpdir = "R_temp/")
@@ -65,8 +65,8 @@ levelplot(solar_radiation)
 # NDVI April
 # NDVI September
 # Landcover DONE!
-# Distance to rivers and water
-# Distance to roads # Done
+# Distance to rivers and water # DONE!
+# Distance to roads # DONE!
 # Human footprint
 
 # Create processing mask
@@ -151,36 +151,29 @@ substring(folders_NDVI_string, 4)
 
 # Distance to rivers and water - continue and finish merging lakes and rivers layer. Started in arcgis with raster algebra approach
 
-lakes <- raster("E:/Temp/Crete/Lakes_raster_v3.tif")
-lakes <- mask(lakes, rivers)
-
-rivers <- raster("E:/Temp/Crete/Rivers_raster_v2.tif")
+crete_mask <- raster("E:/Projects/Thesis_paper/Thesis_paper/Crete_gap/Data/Predictors_intermediate/Aster_DEM.tif")
 
 
+water_distance <- raster("E:/Temp/Crete/Water_bodies_distance_arc.tif")
 
-mapview(lakes)
+histogram(water_distance)
+
+water_distance_values <- getValues(water_distance)
+
+qplot(water_distance_values)
+water_distance_log <- log(water_distance)
+histogram(water_distance_log)
+writeRaster(water_distance_log, "E:/Projects/Thesis_paper/Thesis_paper/Crete_gap/Data/Predictors_intermediate/Distance_water.tif", format = "GTiff")
+
+# Human footprint index ----
+
+HFI <- raster("E:\\GIS_data\\Global_data\\Human_footprint_index\\hfp_global_geo_grid\\hf_v2geo\\w001001.adf")
 
 
-water_bodies <- rivers * lakes
+HFI_crete <- crop(HFI, Crete_poly_wgs)
 
+crete_mask
 
-writeOGR(water_bodies, "E:/Temp/Crete", "Water_bodies_poly_v2", driver = "ESRI Shapefile")
-mapview(water_bodies)
-# Species data ------------------------------------------------------------
+HFI_crete <- projectRaster(HFI_crete, crete_mask)
 
-Crete_species <- read_csv("E:\\Projects\\Thesis_paper\\Thesis_paper\\Crete_gap\\Data\\Species data\\Crete_species_filtered_wGBIF_final.csv")
-head(Crete_species)
-Crete_species
-
-
-my_BM_Data<-BIOMOD_FormatingData(resp.var = rep(1,length(Crete_species_BufV$Name[Crete_species_BufV$Name==i])),
-                                 expl.var = Crete_raster,
-                                 resp.xy = Species_XY,
-                                 eval.resp.xy = NULL,
-                                 PA.nb.rep = 2, #nr of preudoabsence realisations, 10 runs from Barbet-Massin
-                                 PA.nb.absences = length(Crete_species_BufV$Name[Crete_species_BufV$Name==i])*2,  # 1000 From Barbet-Massin et al. 2012
-                                 PA.strategy = "disk",
-                                 PA.dist.min = 5000, # if PA.strategy is "disk"
-                                 PA.dist.max = 200000,
-                                 na.rm = TRUE,
-                                 resp.name = as.character(i))
+writeRaster(HFI_crete, "E:/Projects/Thesis_paper/Thesis_paper/Crete_gap/Data/Predictors_intermediate/Human_footprint_index.tif", format = "GTiff")
